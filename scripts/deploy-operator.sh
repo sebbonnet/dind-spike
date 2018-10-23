@@ -47,7 +47,7 @@ until (( "$count" >= "$maxRetry" ))
 do
     kubectl --context dind -n test-cassandra-operator get pods -o wide
     sleep 5
-    count=$((count ++))
+    count=$((count + 1))
 done
 
 log "Done"
