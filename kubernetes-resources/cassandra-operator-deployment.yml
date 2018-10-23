@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cassandra-node
+  namespace: $TARGET_NAMESPACE
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cassandra-operator
+  namespace: $TARGET_NAMESPACE
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: cassandra-operator
+  name: cassandra-operator
+  namespace: $TARGET_NAMESPACE
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra-operator
+      deployment: cassandra-operator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: cassandra-operator
+        deployment: cassandra-operator
+    spec:
+      containers:
+      - env:
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: APP_NAME
+          value: cassandra-operator
+        args: $OPERATOR_ARGS
+        image: $OPERATOR_IMAGE
+        imagePullPolicy: IfNotPresent
+        name: cassandra-operator
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            cpu: "0"
+            memory: 256Mi
+      restartPolicy: Always
+      serviceAccount: cassandra-operator
+      serviceAccountName: cassandra-operator
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-operator
+  namespace: $TARGET_NAMESPACE
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app: cassandra-operator
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    sky.uk/frontend-elb-scheme: internal
+    sky.uk/strip-path: "true"
+  labels:
+    service: cassandra-operator
+  name: cassandra-operator-http
+  namespace: $TARGET_NAMESPACE
+spec:
+  rules:
+  - host: $INGRESS_HOST
+    http:
+      paths:
+      - backend:
+          serviceName: cassandra-operator
+          servicePort: 80
+        path: /

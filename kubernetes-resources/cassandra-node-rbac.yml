@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cassandra-node
+rules:
+- apiGroups: ["core.sky.uk"]
+  resources: ["cassandras"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cassandra-node-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cassandra-node
+subjects:
+- kind: ServiceAccount
+  name: cassandra-node
+  namespace: $TARGET_NAMESPACE

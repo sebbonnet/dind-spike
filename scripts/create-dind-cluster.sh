@@ -3,6 +3,8 @@ set -e
 scriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 projectDir="${scriptDir}/../"
 
+source ${scriptDir}/log.sh
+
 function setup_node() {
     local start_index=$1
     local node_count=$2
@@ -95,6 +97,7 @@ function create_cassandra_crd() {
     kubectl --context dind apply -f ${projectDir}/kubernetes-resources/cassandra-operator-crd.yml
 }
 
+log "Downloading the dind cluster"
 DIND_VERSION=${DIND_VERSION:-"1.10"}
 curl "https://cdn.rawgit.com/kubernetes-sigs/kubeadm-dind-cluster/master/fixed/dind-cluster-v${DIND_VERSION}.sh" -o "dind-cluster-v${DIND_VERSION}.sh"
 chmod +x dind-cluster-v${DIND_VERSION}.sh
@@ -108,11 +111,13 @@ zone_a_node_count=2
 zone_b_node_count=2
 zone_c_node_count=0
 numNodes=$((zone_a_node_count + zone_b_node_count + zone_c_node_count))
+log "Creating the dind cluster"
 FEATURE_GATES=${FEATURE_GATES} KUBELET_FEATURE_GATES=${KUBELET_FEATURE_GATES} NUM_NODES=${numNodes} ./dind-cluster-v${DIND_VERSION}.sh up
 
 # add kubectl directory to PATH
 export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
 
+log "Preparing the cluster for operator deployment"
 setup_node 1 ${zone_a_node_count} a
 setup_node $((1 + ${zone_a_node_count})) ${zone_b_node_count} b
 setup_node $((1 + ${zone_a_node_count} + ${zone_b_node_count})) ${zone_c_node_count} c
